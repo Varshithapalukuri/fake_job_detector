@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AI Fake Job Detector</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: linear-gradient(to right, #141e30, #243b55);
+    color: white;
+    text-align: center;
+}
+
+.container {
+    width: 60%;
+    margin: auto;
+}
+
+.box {
+    background: white;
+    color: black;
+    padding: 20px;
+    margin: 20px;
+    border-radius: 12px;
+}
+
+textarea {
+    width: 90%;
+    height: 120px;
+    padding: 10px;
+}
+
+button {
+    padding: 10px;
+    margin: 5px;
+    background: #243b55;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #141e30;
+}
+
+#result {
+    margin-top: 15px;
+    white-space: pre-line;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.safe {
+    background: #d4edda;
+    color: green;
+}
+
+.danger {
+    background: #f8d7da;
+    color: red;
+}
+
+#historyBox {
+    text-align: left;
+    max-height: 200px;
+    overflow-y: scroll;
+}
+</style>
+
+</head>
+<body>
+
+<h1>🛡 AI Fake Job Detection System</h1>
+
+<div class="container">
+
+<div class="box">
+    <h2>🔍 Check Job</h2>
+    <textarea id="jobText" placeholder="Paste job description..."></textarea><br>
+
+    <button onclick="checkJob()">Check</button>
+    <button onclick="reportJob()">Report 🚨</button>
+
+    <div id="result"></div>
+</div>
+
+<div class="box">
+    <h2>📜 History</h2>
+    <button onclick="loadHistory()">Load History</button>
+    <div id="historyBox"></div>
+</div>
+
+</div>
+
+<script>
+
+async function checkJob() {
+    const text = document.getElementById("jobText").value;
+
+    try {
+        const res = await fetch("http://127.0.0.1:8000/predict", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ text: text })
+        });
+
+        const data = await res.json();
+
+        let resultDiv = document.getElementById("result");
+
+        resultDiv.className = (data.prediction === "FAKE JOB") ? "danger" : "safe";
+
+        resultDiv.innerText =
+            "Result: " + data.prediction +
+            "\nConfidence: " + data.confidence + "%" +
+            "\nRisk Level: " + data.risk +
+            "\n\nReasons:\n- " + data.reasons.join("\n- ") +
+            "\n\nAdvice:\n" + data.advice;
+
+    } catch (error) {
+        document.getElementById("result").innerText =
+            "❌ Error connecting to server";
+    }
+}
+
+async function loadHistory() {
+    const res = await fetch("http://127.0.0.1:8000/history");
+    const data = await res.json();
+
+    let text = "";
+    data.forEach(item => {
+        text += "• " + item.text.substring(0,50) + "... → " + item.result + "\n";
+    });
+
+    document.getElementById("historyBox").innerText = text;
+}
+
+async function reportJob() {
+    const text = document.getElementById("jobText").value;
+
+    await fetch("http://127.0.0.1:8000/report", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ text: text })
+    });
+
+    alert("Reported successfully 🚨");
+}
+
+</script>
+
+</body>
+</html>

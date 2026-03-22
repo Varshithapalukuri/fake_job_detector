@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import joblib
 
 # Create FastAPI app
@@ -6,6 +7,15 @@ app = FastAPI(
     title="Fake Job Detection API",
     description="Detect whether a job posting is real or fake using Machine Learning",
     version="1.0"
+)
+
+# 🔥 CORS FIX (IMPORTANT)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allow all frontends
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Load trained model

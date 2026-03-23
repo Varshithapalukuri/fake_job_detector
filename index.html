@@ -11,7 +11,6 @@ body {
     color:white;
 }
 
-/* GLASS EFFECT */
 .glass {
     background: rgba(255,255,255,0.05);
     backdrop-filter: blur(10px);
@@ -20,7 +19,6 @@ body {
     box-shadow: 0 0 20px rgba(0,0,0,0.3);
 }
 
-/* LOGIN */
 #loginPage {
     display:flex;
     justify-content:center;
@@ -28,27 +26,17 @@ body {
     height:100vh;
 }
 
-.login-box {
-    width:300px;
-}
-
 input {
     width:100%;
     padding:10px;
     margin:10px 0;
-    border:none;
     border-radius:8px;
+    border:none;
 }
 
-/* DASHBOARD */
 #dashboard {
     display:none;
     padding:30px;
-}
-
-.header {
-    font-size:28px;
-    margin-bottom:20px;
 }
 
 textarea {
@@ -59,54 +47,41 @@ textarea {
     border:none;
 }
 
-/* BUTTONS */
 button {
     padding:10px 20px;
     border:none;
     border-radius:8px;
     cursor:pointer;
     margin-top:10px;
-    transition:0.3s;
 }
 
-.checkBtn { background:#22c55e; color:white; }
-.checkBtn:hover { background:#16a34a; }
-
+.checkBtn { background:#22c55e; }
 .applyBtn { background:#3b82f6; color:white; }
 .ignoreBtn { background:#ef4444; color:white; }
 
-/* CARD */
 .card {
     margin-top:20px;
     padding:20px;
     border-radius:15px;
-    animation:fadeIn 0.5s ease-in;
 }
 
-.fake { background:rgba(220,38,38,0.8); }
-.real { background:rgba(34,197,94,0.8); }
+.fake { background:#dc2626; }
+.real { background:#16a34a; }
 
-/* ANIMATION */
-@keyframes fadeIn {
-    from {opacity:0; transform:translateY(20px);}
-    to {opacity:1; transform:translateY(0);}
-}
-
-/* GRID */
 .grid {
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:20px;
 }
-
 </style>
+
 </head>
 
 <body>
 
 <!-- LOGIN -->
 <div id="loginPage">
-    <div class="glass login-box">
+    <div class="glass">
         <h2>Login</h2>
         <input id="username" placeholder="Enter Username">
         <button class="checkBtn" onclick="login()">Enter</button>
@@ -115,24 +90,26 @@ button {
 
 <!-- DASHBOARD -->
 <div id="dashboard">
-
-    <div class="header">🚨 Fake Job Detector</div>
+    <h1>🚨 Fake Job Detector</h1>
 
     <div class="grid">
-        
-        <!-- INPUT -->
+
         <div class="glass">
             <h3>Check Job</h3>
-            <textarea id="jobText" placeholder="Paste job description..."></textarea>
+            <textarea id="jobText"></textarea>
             <button class="checkBtn" onclick="checkJob()">Analyze</button>
         </div>
 
-        <!-- RESULT -->
-        <div id="result" class="glass">
+        <div class="glass">
             <h3>Result</h3>
-            <p>Waiting for input...</p>
+            <div id="result">Waiting...</div>
         </div>
 
+    </div>
+
+    <div class="glass">
+        <h3>📜 History</h3>
+        <div id="historyList"></div>
     </div>
 
 </div>
@@ -162,6 +139,16 @@ function saveToHistory(text,result){
     localStorage.setItem("history",JSON.stringify(h));
 }
 
+function loadHistory(){
+    let h=JSON.parse(localStorage.getItem("history"))||[];
+    let html="";
+    h.slice(-5).reverse().forEach(item=>{
+        html+=`<p>🔹 ${item.result.prediction}</p>`;
+    });
+    document.getElementById("historyList").innerHTML=html;
+}
+
+// SIMILARITY
 function similarity(a,b){
     let same=0;
     for(let i=0;i<Math.min(a.length,b.length);i++){
@@ -180,15 +167,6 @@ function checkHistory(text){
     return null;
 }
 
-// HIGHLIGHT
-function highlight(text){
-    let words=["urgent","bank","aadhaar","earn"];
-    words.forEach(w=>{
-        text=text.replaceAll(w, `<span style="color:yellow">${w}</span>`);
-    });
-    return text;
-}
-
 // MAIN
 async function checkJob(){
 
@@ -196,7 +174,7 @@ async function checkJob(){
 
     let old=checkHistory(text);
     if(old){
-        display(old,text);
+        display(old);
         return;
     }
 
@@ -209,12 +187,12 @@ async function checkJob(){
     let data=await res.json();
 
     saveToHistory(text,data);
-
-    display(data,text);
+    display(data);
+    loadHistory();
 }
 
 // DISPLAY
-function display(data,text){
+function display(data){
 
     let cls=data.prediction==="FAKE JOB"?"card fake":"card real";
 
@@ -229,16 +207,15 @@ function display(data,text){
     document.getElementById("result").innerHTML=`
     <div class="${cls}">
         <h2>${data.prediction}</h2>
-        <p>Confidence: ${data.confidence}</p>
-        <p>🏢 ${data.company}</p>
-        ${reasons}
-        <br><br>
+        Confidence: ${data.confidence}<br>
+        🏢 ${data.company}<br>
+        ${reasons}<br><br>
         ${btn}
-        <br><br>
-        ${highlight(text)}
     </div>
     `;
 }
+
+loadHistory();
 
 </script>
 

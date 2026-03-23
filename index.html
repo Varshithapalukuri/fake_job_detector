@@ -1,151 +1,155 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>AI Fake Job Detector</title>
+<title>Fake Job Detector</title>
 
 <style>
 body {
-    font-family: Arial;
-    background: linear-gradient(to right, #141e30, #243b55);
+    font-family: 'Segoe UI';
+    background: linear-gradient(135deg, #0f172a, #1e293b);
     color: white;
     text-align: center;
-}
-
-.container {
-    width: 60%;
-    margin: auto;
-}
-
-.box {
-    background: white;
-    color: black;
-    padding: 20px;
-    margin: 20px;
-    border-radius: 12px;
+    padding: 50px;
 }
 
 textarea {
-    width: 90%;
-    height: 120px;
-    padding: 10px;
+    width: 60%;
+    height: 130px;
+    padding: 15px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
 }
 
 button {
-    padding: 10px;
-    margin: 5px;
-    background: #243b55;
-    color: white;
+    margin-top: 15px;
+    padding: 10px 20px;
+    border-radius: 10px;
     border: none;
     cursor: pointer;
 }
 
-button:hover {
-    background: #141e30;
+.checkBtn { background: #22c55e; color: white; }
+.applyBtn { background: blue; color: white; }
+.ignoreBtn { background: red; color: white; }
+
+.card {
+    margin-top: 30px;
+    padding: 20px;
+    border-radius: 12px;
+    width: 50%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
-#result {
-    margin-top: 15px;
-    white-space: pre-line;
-    font-weight: bold;
-    padding: 10px;
-    border-radius: 8px;
-}
-
-.safe {
-    background: #d4edda;
-    color: green;
-}
-
-.danger {
-    background: #f8d7da;
-    color: red;
-}
-
-#historyBox {
-    text-align: left;
-    max-height: 200px;
-    overflow-y: scroll;
-}
+.fake { background: #dc2626; }
+.real { background: #16a34a; }
 </style>
 
 </head>
+
 <body>
 
-<h1>🛡 AI Fake Job Detection System</h1>
+<h1>🚨 Fake Job Detector</h1>
 
-<div class="container">
+<textarea id="jobText" placeholder="Paste job description here..."></textarea><br>
 
-<div class="box">
-    <h2>🔍 Check Job</h2>
-    <textarea id="jobText" placeholder="Paste job description..."></textarea><br>
+<button class="checkBtn" onclick="checkJob()">Check Job</button>
 
-    <button onclick="checkJob()">Check</button>
-    <button onclick="reportJob()">Report 🚨</button>
-
-    <div id="result"></div>
-</div>
-
-<div class="box">
-    <h2>📜 History</h2>
-    <button onclick="loadHistory()">Load History</button>
-    <div id="historyBox"></div>
-</div>
-
-</div>
+<div id="loading"></div>
+<div id="result"></div>
 
 <script>
 
+// Save history
+function saveToHistory(text, result) {
+    let history = JSON.parse(localStorage.getItem("jobHistory")) || [];
+    history.push({ text, result });
+    localStorage.setItem("jobHistory", JSON.stringify(history));
+}
+
+// Check history
+function checkHistory(text) {
+    let history = JSON.parse(localStorage.getItem("jobHistory")) || [];
+    for (let item of history) {
+        if (item.text === text) {
+            return item.result;
+        }
+    }
+    return null;
+}
+
+// Display result
+function displayResult(data) {
+
+    let className = data.prediction === "FAKE JOB" ? "card fake" : "card real";
+
+    let actionButton = "";
+
+    if (data.prediction === "FAKE JOB") {
+        actionButton = `<button class="ignoreBtn">Ignore</button>`;
+    } else {
+        actionButton = `<button class="applyBtn">Apply Now</button>`;
+    }
+
+    let reasonsHtml = "";
+
+    if (data.reasons && data.reasons.length > 0) {
+        reasonsHtml = "<br><br>⚠ Reasons:<br>" + data.reasons.join("<br>");
+    }
+
+    document.getElementById("result").innerHTML = `
+        <div class="${className}">
+            <h2>${data.prediction}</h2>
+            Confidence: ${data.confidence}
+            ${reasonsHtml}
+            <br><br>
+            ${actionButton}
+        </div>
+    `;
+}
+
+// Main function
 async function checkJob() {
-    const text = document.getElementById("jobText").value;
+
+    let text = document.getElementById("jobText").value;
+
+    if (!text) {
+        alert("Enter job description");
+        return;
+    }
+
+    // Check history first
+    let oldResult = checkHistory(text);
+    if (oldResult) {
+        displayResult(oldResult);
+        return;
+    }
+
+    document.getElementById("loading").innerText = "Checking...";
+    document.getElementById("result").innerHTML = "";
 
     try {
-        const res = await fetch("http://127.0.0.1:8000/predict", {
+        let response = await fetch("https://fake-job-detector-vdcr.onrender.com/predict", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({ text: text })
         });
 
-        const data = await res.json();
+        let data = await response.json();
 
-        let resultDiv = document.getElementById("result");
+        document.getElementById("loading").innerText = "";
 
-        resultDiv.className = (data.prediction === "FAKE JOB") ? "danger" : "safe";
+        saveToHistory(text, data);
 
-        resultDiv.innerText =
-            "Result: " + data.prediction +
-            "\nConfidence: " + data.confidence + "%" +
-            "\nRisk Level: " + data.risk +
-            "\n\nReasons:\n- " + data.reasons.join("\n- ") +
-            "\n\nAdvice:\n" + data.advice;
+        displayResult(data);
 
     } catch (error) {
-        document.getElementById("result").innerText =
-            "❌ Error connecting to server";
+        document.getElementById("loading").innerText = "";
+        document.getElementById("result").innerText = "Error connecting to server";
     }
-}
-
-async function loadHistory() {
-    const res = await fetch("http://127.0.0.1:8000/history");
-    const data = await res.json();
-
-    let text = "";
-    data.forEach(item => {
-        text += "• " + item.text.substring(0,50) + "... → " + item.result + "\n";
-    });
-
-    document.getElementById("historyBox").innerText = text;
-}
-
-async function reportJob() {
-    const text = document.getElementById("jobText").value;
-
-    await fetch("http://127.0.0.1:8000/report", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ text: text })
-    });
-
-    alert("Reported successfully 🚨");
 }
 
 </script>

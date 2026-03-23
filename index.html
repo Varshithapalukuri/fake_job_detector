@@ -1,155 +1,243 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Fake Job Detector</title>
+<title>Fake Job Detector Pro</title>
 
 <style>
 body {
-    font-family: 'Segoe UI';
-    background: linear-gradient(135deg, #0f172a, #1e293b);
-    color: white;
-    text-align: center;
-    padding: 50px;
+    margin:0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg,#0f172a,#1e293b);
+    color:white;
+}
+
+/* GLASS EFFECT */
+.glass {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+/* LOGIN */
+#loginPage {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.login-box {
+    width:300px;
+}
+
+input {
+    width:100%;
+    padding:10px;
+    margin:10px 0;
+    border:none;
+    border-radius:8px;
+}
+
+/* DASHBOARD */
+#dashboard {
+    display:none;
+    padding:30px;
+}
+
+.header {
+    font-size:28px;
+    margin-bottom:20px;
 }
 
 textarea {
-    width: 60%;
-    height: 130px;
-    padding: 15px;
-    border-radius: 12px;
-    border: none;
-    font-size: 16px;
+    width:100%;
+    height:120px;
+    border-radius:10px;
+    padding:10px;
+    border:none;
 }
 
+/* BUTTONS */
 button {
-    margin-top: 15px;
-    padding: 10px 20px;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
+    padding:10px 20px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    margin-top:10px;
+    transition:0.3s;
 }
 
-.checkBtn { background: #22c55e; color: white; }
-.applyBtn { background: blue; color: white; }
-.ignoreBtn { background: red; color: white; }
+.checkBtn { background:#22c55e; color:white; }
+.checkBtn:hover { background:#16a34a; }
 
+.applyBtn { background:#3b82f6; color:white; }
+.ignoreBtn { background:#ef4444; color:white; }
+
+/* CARD */
 .card {
-    margin-top: 30px;
-    padding: 20px;
-    border-radius: 12px;
-    width: 50%;
-    margin-left: auto;
-    margin-right: auto;
+    margin-top:20px;
+    padding:20px;
+    border-radius:15px;
+    animation:fadeIn 0.5s ease-in;
 }
 
-.fake { background: #dc2626; }
-.real { background: #16a34a; }
-</style>
+.fake { background:rgba(220,38,38,0.8); }
+.real { background:rgba(34,197,94,0.8); }
 
+/* ANIMATION */
+@keyframes fadeIn {
+    from {opacity:0; transform:translateY(20px);}
+    to {opacity:1; transform:translateY(0);}
+}
+
+/* GRID */
+.grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+}
+
+</style>
 </head>
 
 <body>
 
-<h1>🚨 Fake Job Detector</h1>
+<!-- LOGIN -->
+<div id="loginPage">
+    <div class="glass login-box">
+        <h2>Login</h2>
+        <input id="username" placeholder="Enter Username">
+        <button class="checkBtn" onclick="login()">Enter</button>
+    </div>
+</div>
 
-<textarea id="jobText" placeholder="Paste job description here..."></textarea><br>
+<!-- DASHBOARD -->
+<div id="dashboard">
 
-<button class="checkBtn" onclick="checkJob()">Check Job</button>
+    <div class="header">🚨 Fake Job Detector</div>
 
-<div id="loading"></div>
-<div id="result"></div>
+    <div class="grid">
+        
+        <!-- INPUT -->
+        <div class="glass">
+            <h3>Check Job</h3>
+            <textarea id="jobText" placeholder="Paste job description..."></textarea>
+            <button class="checkBtn" onclick="checkJob()">Analyze</button>
+        </div>
+
+        <!-- RESULT -->
+        <div id="result" class="glass">
+            <h3>Result</h3>
+            <p>Waiting for input...</p>
+        </div>
+
+    </div>
+
+</div>
 
 <script>
 
-// Save history
-function saveToHistory(text, result) {
-    let history = JSON.parse(localStorage.getItem("jobHistory")) || [];
-    history.push({ text, result });
-    localStorage.setItem("jobHistory", JSON.stringify(history));
+// LOGIN
+function login(){
+    let user=document.getElementById("username").value;
+    if(user){
+        localStorage.setItem("user",user);
+        showDashboard();
+    }
 }
 
-// Check history
-function checkHistory(text) {
-    let history = JSON.parse(localStorage.getItem("jobHistory")) || [];
-    for (let item of history) {
-        if (item.text === text) {
+function showDashboard(){
+    document.getElementById("loginPage").style.display="none";
+    document.getElementById("dashboard").style.display="block";
+}
+
+if(localStorage.getItem("user")) showDashboard();
+
+// HISTORY
+function saveToHistory(text,result){
+    let h=JSON.parse(localStorage.getItem("history"))||[];
+    h.push({text,result});
+    localStorage.setItem("history",JSON.stringify(h));
+}
+
+function similarity(a,b){
+    let same=0;
+    for(let i=0;i<Math.min(a.length,b.length);i++){
+        if(a[i]===b[i]) same++;
+    }
+    return same/Math.max(a.length,b.length);
+}
+
+function checkHistory(text){
+    let h=JSON.parse(localStorage.getItem("history"))||[];
+    for(let item of h){
+        if(similarity(item.text,text)>0.8){
             return item.result;
         }
     }
     return null;
 }
 
-// Display result
-function displayResult(data) {
-
-    let className = data.prediction === "FAKE JOB" ? "card fake" : "card real";
-
-    let actionButton = "";
-
-    if (data.prediction === "FAKE JOB") {
-        actionButton = `<button class="ignoreBtn">Ignore</button>`;
-    } else {
-        actionButton = `<button class="applyBtn">Apply Now</button>`;
-    }
-
-    let reasonsHtml = "";
-
-    if (data.reasons && data.reasons.length > 0) {
-        reasonsHtml = "<br><br>⚠ Reasons:<br>" + data.reasons.join("<br>");
-    }
-
-    document.getElementById("result").innerHTML = `
-        <div class="${className}">
-            <h2>${data.prediction}</h2>
-            Confidence: ${data.confidence}
-            ${reasonsHtml}
-            <br><br>
-            ${actionButton}
-        </div>
-    `;
+// HIGHLIGHT
+function highlight(text){
+    let words=["urgent","bank","aadhaar","earn"];
+    words.forEach(w=>{
+        text=text.replaceAll(w, `<span style="color:yellow">${w}</span>`);
+    });
+    return text;
 }
 
-// Main function
-async function checkJob() {
+// MAIN
+async function checkJob(){
 
-    let text = document.getElementById("jobText").value;
+    let text=document.getElementById("jobText").value;
 
-    if (!text) {
-        alert("Enter job description");
+    let old=checkHistory(text);
+    if(old){
+        display(old,text);
         return;
     }
 
-    // Check history first
-    let oldResult = checkHistory(text);
-    if (oldResult) {
-        displayResult(oldResult);
-        return;
-    }
+    let res=await fetch("https://fake-job-detector-vdcr.onrender.com/predict",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text})
+    });
 
-    document.getElementById("loading").innerText = "Checking...";
-    document.getElementById("result").innerHTML = "";
+    let data=await res.json();
 
-    try {
-        let response = await fetch("https://fake-job-detector-vdcr.onrender.com/predict", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ text: text })
-        });
+    saveToHistory(text,data);
 
-        let data = await response.json();
+    display(data,text);
+}
 
-        document.getElementById("loading").innerText = "";
+// DISPLAY
+function display(data,text){
 
-        saveToHistory(text, data);
+    let cls=data.prediction==="FAKE JOB"?"card fake":"card real";
 
-        displayResult(data);
+    let btn=data.prediction==="FAKE JOB"
+        ? `<button class="ignoreBtn">Ignore</button>`
+        : `<button class="applyBtn">Apply Now</button>`;
 
-    } catch (error) {
-        document.getElementById("loading").innerText = "";
-        document.getElementById("result").innerText = "Error connecting to server";
-    }
+    let reasons=data.reasons.length
+        ? "<br>"+data.reasons.join("<br>")
+        : "";
+
+    document.getElementById("result").innerHTML=`
+    <div class="${cls}">
+        <h2>${data.prediction}</h2>
+        <p>Confidence: ${data.confidence}</p>
+        <p>🏢 ${data.company}</p>
+        ${reasons}
+        <br><br>
+        ${btn}
+        <br><br>
+        ${highlight(text)}
+    </div>
+    `;
 }
 
 </script>

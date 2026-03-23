@@ -35,7 +35,7 @@ def get_reasons(text):
         reasons.append("Creates urgency pressure")
     if "no experience" in text:
         reasons.append("No experience required")
-    if "earn" in text or "salary" in text:
+    if "salary" in text or "earn" in text:
         reasons.append("Unrealistic salary offer")
 
     return reasons
